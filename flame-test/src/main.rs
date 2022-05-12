@@ -30,11 +30,6 @@ fn configure_switch<P: Pin>(mut switch_pin: P) -> GPIO<P, Input> {
     GPIO::new(switch_pin)
 }
 
-fn configure_switch_output<P: Pin>(switch_pin: P) -> GPIO<P, Output> {
-    let pin = configure_switch(switch_pin);
-    pin.output()
-}
-
 pub fn configure_output<P: Pin>(pad: P) -> GPIO<P, Output> {
     let pin = imxrt_hal::gpio::GPIO::new(pad);
     pin.output()

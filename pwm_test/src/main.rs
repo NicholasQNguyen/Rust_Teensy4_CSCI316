@@ -22,10 +22,27 @@ use bsp::hal::pwm::Channel;
 use cortex_m_rt as rt;
 use embedded_hal::Pwm;
 use teensy4_bsp as bsp;
+use imxrt_hal::{
+    gpio::{Input, Output, GPIO},
+    iomuxc::{configure, gpio::Pin, Config, Hysteresis, PullKeeper},
+};
 
 /// Helper function to represent a duty cycle as a percent
 fn percent(duty: u16) -> f32 {
     ((duty as f32) * 100.0f32) / (core::u16::MAX as f32)
+}
+
+fn configure_switch<P: Pin>(mut switch_pin: P) -> GPIO<P, Input> {
+    const LOW_SWITCH_CONFIG: Config = Config::zero()
+        .set_hysteresis(Hysteresis::Enabled)
+        .set_pull_keeper(Some(PullKeeper::Pulldown100k));
+    configure(&mut switch_pin, LOW_SWITCH_CONFIG);
+    GPIO::new(switch_pin)
+}
+
+pub fn configure_output<P: Pin>(pad: P) -> GPIO<P, Output> {
+    let pin = imxrt_hal::gpio::GPIO::new(pad);
+    pin.output()
 }
 
 #[rt::entry]
@@ -34,6 +51,9 @@ fn main() -> ! {
     let mut p = bsp::Peripherals::take().unwrap();
     let mut systick = systick::new(cortex_m::Peripherals::take().unwrap().SYST);
     let pins = bsp::pins::t40::from_pads(p.iomuxc);
+
+    // sets up the input
+    let flame_sensor = configure_switch(pins.p10);
     usb_io::init().unwrap();
     // Delay is only to let a user set-up their USB serial connection...
     systick.delay_ms(5000);
@@ -63,28 +83,23 @@ fn main() -> ! {
 
     // Two different duty cycles that will be swapped to show
     // different duty cycles on the same PWM pins
-    let (mut duty1, mut duty2) = (core::u16::MAX / 4, core::u16::MAX / 2);
+    let (mut duty1, mut duty2) = (core::u16::MAX / 2, core::u16::MAX);
     let mut ctrl = sm2.control(&mut pwm2.handle);
     loop {
-        log::info!(
-            "Setting duty cycles {} and {}...",
-            percent(duty1),
-            percent(duty2)
-        );
-        ctrl.enable(Channel::A);
-        ctrl.enable(Channel::B);
-        ctrl.set_duty(Channel::A, duty1);
-        ctrl.set_duty(Channel::B, duty2);
-        systick.delay_ms(200);
+        if flame_sensor.is_set() {
+            ctrl.enable(Channel::A);
+            ctrl.enable(Channel::B);
+            ctrl.set_duty(Channel::A, duty1);
+            ctrl.set_duty(Channel::B, duty2);
+            systick.delay_ms(200);
 
-        log::info!("Disabling 'B' PWM...");
-        ctrl.disable(Channel::B);
-        systick.delay_ms(200);
+            ctrl.disable(Channel::B);
+            systick.delay_ms(200);
 
-        log::info!("Disabling 'A' PWM...");
-        ctrl.disable(Channel::A);
-        systick.delay_ms(400);
+            ctrl.disable(Channel::A);
+            systick.delay_ms(400);
 
-        core::mem::swap(&mut duty1, &mut duty2);
+            core::mem::swap(&mut duty1, &mut duty2);
+        }
     }
 }
