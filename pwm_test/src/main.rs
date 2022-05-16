@@ -95,39 +95,27 @@ fn main() -> ! {
             spin = true;
         }
         if spin {
-            ctrl.enable(Channel::A);
-            ctrl.enable(Channel::B);
-            ctrl.set_duty(Channel::A, duty1);
-            ctrl.set_duty(Channel::B, duty2);
-            systick.delay_ms(400);
+            // Spin twice to reset position
+            for i in 0..2 {
+                ctrl.enable(Channel::A);
+                ctrl.enable(Channel::B);
+                ctrl.set_duty(Channel::A, duty1);
+                ctrl.set_duty(Channel::B, duty2);
+                systick.delay_ms(400);
 
-            ctrl.disable(Channel::B);
-//            systick.delay_ms(200);
+                ctrl.disable(Channel::B);
+    //            systick.delay_ms(200);
 
-            ctrl.disable(Channel::A);
-            systick.delay_ms(400);
+                ctrl.disable(Channel::A);
+                systick.delay_ms(400);
 
-            core::mem::swap(&mut duty1, &mut duty2);
+                core::mem::swap(&mut duty1, &mut duty2);
 
-            done_spinning = true;
-        }
+                if i == 1 { 
+                    spin = false;
+                }
+            }
 
-        if done_spinning {
-            // sping once more to reset position
-            ctrl.enable(Channel::A);
-            ctrl.enable(Channel::B);
-            ctrl.set_duty(Channel::A, duty1);
-            ctrl.set_duty(Channel::B, duty2);
-            systick.delay_ms(400);
-
-            ctrl.disable(Channel::B);
-            ctrl.disable(Channel::A);
-
-            systick.delay_ms(400);
-            core::mem::swap(&mut duty1, &mut duty2);
-            spin = false;
-            done_spinning = false;
-           
         }
     }
 }
