@@ -92,13 +92,13 @@ fn main() -> ! {
             ctrl.set_duty(Channel::A, duty1);
             ctrl.set_duty(Channel::B, duty2);
             systick.delay_ms(200);
-
+/*
             ctrl.disable(Channel::B);
             systick.delay_ms(200);
 
             ctrl.disable(Channel::A);
             systick.delay_ms(400);
-
+*/
             core::mem::swap(&mut duty1, &mut duty2);
         }
     }
