@@ -85,21 +85,49 @@ fn main() -> ! {
     // different duty cycles on the same PWM pins
     let (mut duty1, mut duty2) = (core::u16::MAX / 2, core::u16::MAX);
     let mut ctrl = sm2.control(&mut pwm2.handle);
+
+    // Variables to track if we should spin or not
+    let mut spin: bool = false;
+    let mut done_spinning: bool = false;
+
     loop {
         if flame_sensor.is_set() {
+            spin = true;
+        }
+        if spin {
             ctrl.enable(Channel::A);
             ctrl.enable(Channel::B);
             ctrl.set_duty(Channel::A, duty1);
             ctrl.set_duty(Channel::B, duty2);
-            systick.delay_ms(200);
-/*
+            systick.delay_ms(400);
+
             ctrl.disable(Channel::B);
-            systick.delay_ms(200);
+//            systick.delay_ms(200);
 
             ctrl.disable(Channel::A);
             systick.delay_ms(400);
-*/
+
             core::mem::swap(&mut duty1, &mut duty2);
+
+            done_spinning = true;
+        }
+
+        if done_spinning {
+            // sping once more to reset position
+            ctrl.enable(Channel::A);
+            ctrl.enable(Channel::B);
+            ctrl.set_duty(Channel::A, duty1);
+            ctrl.set_duty(Channel::B, duty2);
+            systick.delay_ms(400);
+
+            ctrl.disable(Channel::B);
+            ctrl.disable(Channel::A);
+
+            systick.delay_ms(400);
+            core::mem::swap(&mut duty1, &mut duty2);
+            spin = false;
+            done_spinning = false;
+           
         }
     }
 }
